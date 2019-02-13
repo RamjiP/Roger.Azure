@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-using Roger.Common.Models;
-using Roger.Common.Persistence;
+﻿using Roger.Common.Persistence;
 
 namespace Roger.Azure.Cosmos
 {
