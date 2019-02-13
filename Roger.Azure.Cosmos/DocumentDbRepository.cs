@@ -113,7 +113,7 @@ namespace Roger.Azure.Cosmos
 
         private CollectionNameAttribute GetAttribute()
         {
-            return (CollectionNameAttribute)Attribute.GetCustomAttribute(typeof(T), typeof(CollectionNameAttribute));
+            return (CollectionNameAttribute)Attribute.GetCustomAttribute(this.GetType(), typeof(CollectionNameAttribute));
         }
     }
 }
