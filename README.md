@@ -1,3 +1,5 @@
+# Roger.Azure.Cosmos
+
 - [ Introduction ](#introduction)
 - [ Configuration ](#configuration)
 - [ DB Context ](#db-context)
@@ -5,11 +7,11 @@
 - [ SQL Query ](#sql-query)
 - [ Examples ](#examples)
 
-# Introduction
+## Introduction
 
 **Roger.Azure.Cosmos** has a generic implementation of repository pattern for accessing Cosmos DB SQL API in C#.  It provides a base repository ```DocuentDbRepository<T>``` that exposes functions to perform CRUD operation on a document collection.
 
-# Configuration
+## Configuration
 
 The configurations are injected using ```IOptions<DocumentDbConfiguration>```.  This can be achieved by adding following lines in ```Startup.cs```
 
@@ -55,7 +57,7 @@ The content of DocumentDbConfiguration is
 | PrimaryKey   | Primary key of the Cosmos DB                         |
 | DatabaseName | Name of the database need to be created in Cosmos DB |
 
-# DB Context
+## DB Context
 
 In ```DocumentDbContext``` class, it creates ```DocumentDbClient``` and ```Database``` if not exists.  Hence, it is better to register as a singleton service like
 
@@ -63,7 +65,7 @@ In ```DocumentDbContext``` class, it creates ```DocumentDbClient``` and ```Datab
 services.AddSingleton<IDocumentDbContext, DocumentDbContext>();
 ```
 
-# Collection Name Attribute
+## Collection Name Attribute
 
 This is to define the name of the collection for each repository.  For eg.
 
@@ -82,7 +84,7 @@ This is to define the name of the collection for each repository.  For eg.
 
 The above example would create ```account``` document collection in our Cosmos DB
 
-# SQL Query
+## SQL Query
 
 Here is an example to query against a property in a document collection inside Cosmos DB.
 
@@ -122,7 +124,7 @@ In ```IUserRepsitory.cs```,
     }
 ```
 
-# Examples
+## Examples
 
 
 Let's say ```User.cs``` has the following user model.
