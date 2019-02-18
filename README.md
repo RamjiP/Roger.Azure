@@ -6,11 +6,11 @@
 - [ Examples ](#examples)
 
 # Introduction
----
+
 **Roger.Azure.Cosmos** has a generic implementation of repository pattern for accessing Cosmos DB SQL API in C#.  It provides a base repository ```DocuentDbRepository<T>``` that exposes functions to perform CRUD operation on a document collection.
 
 # Configuration
----
+
 The configurations are injected using ```IOptions<DocumentDbConfiguration>```.  This can be achieved by adding following lines in ```Startup.cs```
 
 ``` c#
@@ -56,7 +56,7 @@ The content of DocumentDbConfiguration is
 | DatabaseName | Name of the database need to be created in Cosmos DB |
 
 # DB Context
----
+
 In ```DocumentDbContext``` class, it creates ```DocumentDbClient``` and ```Database``` if not exists.  Hence, it is better to register as a singleton service like
 
 ``` c#
@@ -64,7 +64,7 @@ services.AddSingleton<IDocumentDbContext, DocumentDbContext>();
 ```
 
 # Collection Name Attribute
----
+
 This is to define the name of the collection for each repository.  For eg.
 
 ``` c#
@@ -83,7 +83,7 @@ This is to define the name of the collection for each repository.  For eg.
 The above example would create ```account``` document collection in our Cosmos DB
 
 # SQL Query
----
+
 Here is an example to query against a property in a document collection inside Cosmos DB.
 
 In ```UserRepository.cs```,
@@ -123,7 +123,7 @@ In ```IUserRepsitory.cs```,
 ```
 
 # Examples
----
+
 
 Let's say ```User.cs``` has the following user model.
 
