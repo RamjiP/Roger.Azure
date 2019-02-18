@@ -1,9 +1,9 @@
-- [Introduction] (#introduction)
-- [Configuration] (#configuration)
-- [DB Context] (#db-context)
-- [Collection Name Attribute] (#collection-name-attribute)
-- [SQL Query] (#sql-query)
-- [Examples] (#examples)
+- [ Introduction ](#introduction)
+- [ Configuration ](#configuration)
+- [ DB Context ](#db-context)
+- [ Collection Name Attribute ](#collection-name-attribute)
+- [ SQL Query ](#sql-query)
+- [ Examples ](#examples)
 
 # Introduction
 ---
