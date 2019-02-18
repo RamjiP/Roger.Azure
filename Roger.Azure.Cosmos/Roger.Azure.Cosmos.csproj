@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <Authors>Ramji Piramanayagam</Authors>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Description>This is a wrapper library for Cosmos db SQL API with repository pattern.</Description>
     <PackageTags>DocumentsDB SQL CosmosDB Azure Repository</PackageTags>
   </PropertyGroup>
