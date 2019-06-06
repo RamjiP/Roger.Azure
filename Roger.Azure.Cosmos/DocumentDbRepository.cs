@@ -47,7 +47,6 @@ namespace Roger.Azure.Cosmos
             return (response.Resource.ToString().Deserialize<T>());
         }
 
-
         public async Task<T> UpdateAsync(string id, T model)
         {
             var response = await _context.Client.ReplaceDocumentAsync(GetDocumentUri(id), model);
@@ -87,7 +86,7 @@ namespace Roger.Azure.Cosmos
                 {
                     var data = await queryable.ExecuteNextAsync<T>();
                     result.Token = data.ResponseContinuation;
-                    result.Data = data.ToList();
+                    result.Data.AddRange(data.ToList());
                 }
             }
 
@@ -114,6 +113,21 @@ namespace Roger.Azure.Cosmos
         private CollectionNameAttribute GetAttribute()
         {
             return (CollectionNameAttribute)Attribute.GetCustomAttribute(this.GetType(), typeof(CollectionNameAttribute));
+        }
+
+        public async Task<IPagedResult<T>> GetAllAsync(string sqlQuery, int pageNumber, int pageSize)
+        {
+            var pageIndex = pageNumber - 1;
+            pageIndex = pageIndex < 0 ? 0 : pageIndex;
+            sqlQuery = $"{sqlQuery} OFFSET {pageIndex * pageSize} LIMIT {pageSize}";
+            var result = await GetAsync(sqlQuery, pageSize);
+            return new PagedResult<T>()
+            {
+                Data = result.Data,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                HasNextPage = !string.IsNullOrWhiteSpace(result.Token)
+            };
         }
     }
 }
