@@ -5,7 +5,7 @@ trigger:
   - bugfix/*
 
 jobs:
-  - job: Pack-and-publish
+  - job: Pack_and_publish
     pool:
       name: Hosted Windows 2019 with VS2019
 
