@@ -1,0 +1,57 @@
+trigger:
+  - master
+  - hotfix/*
+  - feature/*
+  - bugfix/*
+
+jobs:
+  - job: Pack-and-publish
+    pool:
+      name: Hosted Windows 2019 with VS2019
+
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Restore
+      inputs:
+        command: restore
+        projects: '**/*.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        projects: '**/*.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      displayName: Test
+      inputs:
+        command: test
+        projects: '**/*[Tt]ests/*.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      displayName: Package
+      inputs:
+        command: pack
+        buildProperties: 'PackageVersion=1.0.5'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet push'
+      inputs:
+        command: push
+        nuGetFeedType: external
+        publishFeedCredentials: Nuget.org
+      enabled: false
+
+    - task: NuGetCommand@2
+      displayName: 'NuGet push'
+      inputs:
+        command: push
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+        nuGetFeedType: external
+        publishFeedCredentials: Nuget.org
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
