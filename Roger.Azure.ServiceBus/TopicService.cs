@@ -4,20 +4,26 @@ using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.ServiceBus;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Roger.Azure.ServiceBus.Configuration;
 using Roger.Common.Constants;
 using Roger.Common.Extensions;
+using Roger.Common.Messaging;
 using Roger.Json.Extensions;
 
 namespace Roger.Azure.ServiceBus
 {
-    public class TopicService<T>
+    public class TopicService<T> : ITopicService<T>
+        where T: new()
     {
-        private readonly ITopicClient Client;
+        private readonly AsbConfiguration _configuration;
+        private readonly ITopicClient _client;
 
-        public TopicService(IAzureServiceBusFactory azureServiceBusFactory, string topicName)
+        public TopicService(AsbConfiguration configuration, string topicName)
         {
-            Client = azureServiceBusFactory.CreateTopicClient(topicName);
+            _configuration = configuration;
+            _client = new TopicClient(_configuration.ConnectionString, topicName); 
         }
 
         public Task SendAsync(T obj, IDictionary<string, object> properties = null)
@@ -31,7 +37,7 @@ namespace Roger.Azure.ServiceBus
                     message.UserProperties.Add(property);
                 }
             }
-            return Client.SendAsync(message);
+            return _client.SendAsync(message);
         }
     }
 }
