@@ -16,40 +16,40 @@ namespace Roger.Azure.Cosmos
         where T : new()
     {
         private readonly string _collectionName;
-        private readonly Uri CollectionUri;
+        private readonly Uri _collectionUri;
 
-        private readonly IDocumentDbContext _context;
+        protected readonly IDocumentDbContext Context;
         protected readonly ILogger Logger;
         protected readonly DocumentCollection DocumentCollection;
 
         public DocumentDbRepository(IDocumentDbContext context, ILogger logger)
         {
-            _context = context;
+            Context = context;
             Logger = logger;
             var attr = GetAttribute();
             _collectionName = attr?.Name;
             Logger.LogInformation($"Creating collection {_collectionName} if not exists under database {context.DatabaseUri}");
-            var resDc = _context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri,
+            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri,
                 new DocumentCollection() { Id = _collectionName, DefaultTimeToLive = attr?.DefaultTimeToLive }).Result;
-            CollectionUri = UriFactory.CreateDocumentCollectionUri(_context.DatabaseName, _collectionName);
+            _collectionUri = UriFactory.CreateDocumentCollectionUri(Context.DatabaseName, _collectionName);
             DocumentCollection = resDc.Resource;
         }
 
         public async Task<T> CreateAsync(T model)
         {
-            var response = await _context.Client.CreateDocumentAsync(CollectionUri, model);
+            var response = await Context.Client.CreateDocumentAsync(_collectionUri, model);
             return response.Resource.ToString().Deserialize<T>();
         }
 
         public async Task<T> CreateOrUpdateAsync(T model)
         {
-            var response = await _context.Client.UpsertDocumentAsync(CollectionUri, model);
+            var response = await Context.Client.UpsertDocumentAsync(_collectionUri, model);
             return (response.Resource.ToString().Deserialize<T>());
         }
 
         public async Task<T> UpdateAsync(string id, T model)
         {
-            var response = await _context.Client.ReplaceDocumentAsync(GetDocumentUri(id), model);
+            var response = await Context.Client.ReplaceDocumentAsync(GetDocumentUri(id), model);
             return (response.Resource.ToString().Deserialize<T>());
         }
 
@@ -57,7 +57,7 @@ namespace Roger.Azure.Cosmos
         {
             try
             {
-                var response = await _context.Client.ReadDocumentAsync(GetDocumentUri(id));
+                var response = await Context.Client.ReadDocumentAsync(GetDocumentUri(id));
                 return (response.Resource.ToString().Deserialize<T>());
             }
             catch (DocumentClientException e)
@@ -74,7 +74,7 @@ namespace Roger.Azure.Cosmos
         protected async Task<ITokenPagedResult<T>> GetAsync(string sqlQuery, int maxItemCount = 10, string continuationToken = null)
         {
             var result = new TokenPagedResult<T>();
-            using (var queryable = _context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, sqlQuery,
+            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, sqlQuery,
                     new FeedOptions()
                     {
                         MaxItemCount = maxItemCount,
@@ -101,12 +101,12 @@ namespace Roger.Azure.Cosmos
 
         public Task DeleteAsync(string id)
         {
-            return _context.Client.DeleteDocumentAsync(GetDocumentUri(id));
+            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id));
         }
 
         private Uri GetDocumentUri(string id)
         {
-            return UriFactory.CreateDocumentUri(_context.DatabaseName, _collectionName, id);
+            return UriFactory.CreateDocumentUri(Context.DatabaseName, _collectionName, id);
         }
 
 
@@ -120,14 +120,47 @@ namespace Roger.Azure.Cosmos
             var pageIndex = pageNumber - 1;
             pageIndex = pageIndex < 0 ? 0 : pageIndex;
             sqlQuery = $"{sqlQuery} OFFSET {pageIndex * pageSize} LIMIT {pageSize}";
-            var result = await GetAsync(sqlQuery, pageSize);
+
+            var dataTask = GetAsync(sqlQuery, pageSize);
+            var count = 0;
+            if (pageNumber == 1)
+            {
+                var cTask = GetCountAsync(sqlQuery);
+                await Task.WhenAll(dataTask, cTask);
+                count = cTask.Result;
+            }
+
+            var result = dataTask.Result;
             return new PagedResult<T>()
             {
                 Data = result.Data,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
-                HasNextPage = !string.IsNullOrWhiteSpace(result.Token)
+                HasNextPage = !string.IsNullOrWhiteSpace(result.Token),
+                TotalCount = count
             };
+        }
+
+        protected async Task<int> GetCountAsync(string sqlQuery)
+        {
+            var indx = sqlQuery.IndexOf("from", StringComparison.OrdinalIgnoreCase);
+            var query = "SELECT VALUE Count(1) " + sqlQuery.Substring(indx);
+            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, query,
+                    new FeedOptions()
+                    {
+                        MaxItemCount = 1,
+                        RequestContinuation = null
+                    })
+                .AsDocumentQuery())
+            {
+                if (queryable.HasMoreResults)
+                {
+                    var data = await queryable.ExecuteNextAsync<int>();
+                    return data.First();
+                }
+            }
+
+            return 0;
         }
     }
 }
