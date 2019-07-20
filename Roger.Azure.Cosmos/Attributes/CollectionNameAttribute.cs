@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Roger.Azure.Cosmos.Attributes
 {
@@ -7,6 +9,8 @@ namespace Roger.Azure.Cosmos.Attributes
     {
         public string Name { get; }
         public int DefaultTimeToLive { get; set; }
+
+        public string PartitionKeyPath { get; set; }
 
         public CollectionNameAttribute(string name)
         {

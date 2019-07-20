@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.Extensions.Logging;
 using Roger.Azure.Cosmos.Attributes;
+using Roger.Azure.Cosmos.Extensions;
 using Roger.Common.Persistence;
 using Roger.Json.Extensions;
 
@@ -29,8 +31,21 @@ namespace Roger.Azure.Cosmos
             var attr = GetAttribute();
             _collectionName = attr?.Name;
             Logger.LogInformation($"Creating collection {_collectionName} if not exists under database {context.DatabaseUri}");
-            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri,
-                new DocumentCollection() { Id = _collectionName, DefaultTimeToLive = attr?.DefaultTimeToLive }).Result;
+            var collection = new DocumentCollection()
+            {
+                Id = _collectionName,
+                DefaultTimeToLive = attr?.DefaultTimeToLive,
+                
+            };
+
+            if (!string.IsNullOrWhiteSpace(attr?.PartitionKeyPath))
+            {
+                collection.PartitionKey = new PartitionKeyDefinition()
+                {
+                    Paths = new Collection<string>() { attr.PartitionKeyPath }
+                };
+            }
+            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection).Result;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(Context.DatabaseName, _collectionName);
             DocumentCollection = resDc.Resource;
         }
@@ -71,15 +86,70 @@ namespace Roger.Azure.Cosmos
             }
         }
 
-        protected async Task<ITokenPagedResult<T>> GetAsync(string sqlQuery, int maxItemCount = 10, string continuationToken = null)
+
+        public Task<ITokenPagedResult<T>> GetTokenisedResultAsync(SqlQueryOptions sqlQueryOptions)
+        {
+            return GetAsync($"SELECT TOP {sqlQueryOptions.PageSize} * from c", sqlQueryOptions);
+        }
+
+        public Task DeleteAsync(string id)
+        {
+            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id));
+        }
+
+        public async Task<IPagedResult<T>> GetPagedResultAsync(string sql, SqlQueryOptions sqlQueryOptions)
+        {
+            var dataTask = GetAsync(sqlQueryOptions.GetSqlWithPageOffset(sql), sqlQueryOptions);
+            var count = 0;
+            if (sqlQueryOptions.RequiresTotalCount)
+            {
+                var cTask = GetCountAsync(sql);
+                await Task.WhenAll(dataTask, cTask);
+                count = cTask.Result;
+            }
+
+            var result = dataTask.Result;
+            return new PagedResult<T>()
+            {
+                Data = result.Data,
+                PageNumber = sqlQueryOptions.PageNumber,
+                PageSize = sqlQueryOptions.PageSize,
+                HasNextPage = !string.IsNullOrWhiteSpace(result.Token),
+                TotalCount = count
+            };
+        }
+
+        protected async Task<int> GetCountAsync(string sqlQuery, string partitionKey = null)
+        {
+            var indx = sqlQuery.IndexOf("from", StringComparison.OrdinalIgnoreCase);
+            var query = "SELECT VALUE Count(1) " + sqlQuery.Substring(indx);
+            var options = new FeedOptions()
+            {
+                MaxItemCount = 1,
+                RequestContinuation = null
+            };
+
+            if (!string.IsNullOrWhiteSpace(partitionKey))
+            {
+                options.PartitionKey = new PartitionKey(partitionKey);
+            }
+            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, query, options)
+                .AsDocumentQuery())
+            {
+                if (queryable.HasMoreResults)
+                {
+                    var data = await queryable.ExecuteNextAsync<int>();
+                    return data.First();
+                }
+            }
+
+            return 0;
+        }
+
+        protected async Task<ITokenPagedResult<T>> GetAsync(string sql, SqlQueryOptions sqlQueryOptions)
         {
             var result = new TokenPagedResult<T>();
-            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, sqlQuery,
-                    new FeedOptions()
-                    {
-                        MaxItemCount = maxItemCount,
-                        RequestContinuation = continuationToken
-                    })
+            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, sql, sqlQueryOptions.FeedOptions())
                 .AsDocumentQuery())
             {
                 while (queryable.HasMoreResults)
@@ -93,17 +163,6 @@ namespace Roger.Azure.Cosmos
             return result;
         }
 
-
-        public Task<ITokenPagedResult<T>> GetAllAsync(int maxItemCount = 10, string continuationToken = null)
-        {
-            return GetAsync($"SELECT TOP {maxItemCount} * from c", maxItemCount, continuationToken);
-        }
-
-        public Task DeleteAsync(string id)
-        {
-            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id));
-        }
-
         private Uri GetDocumentUri(string id)
         {
             return UriFactory.CreateDocumentUri(Context.DatabaseName, _collectionName, id);
@@ -115,52 +174,5 @@ namespace Roger.Azure.Cosmos
             return (CollectionNameAttribute)Attribute.GetCustomAttribute(this.GetType(), typeof(CollectionNameAttribute));
         }
 
-        public async Task<IPagedResult<T>> GetAllAsync(string sqlQuery, int pageNumber, int pageSize)
-        {
-            var pageIndex = pageNumber - 1;
-            pageIndex = pageIndex < 0 ? 0 : pageIndex;
-            sqlQuery = $"{sqlQuery} OFFSET {pageIndex * pageSize} LIMIT {pageSize}";
-
-            var dataTask = GetAsync(sqlQuery, pageSize);
-            var count = 0;
-            if (pageNumber == 1)
-            {
-                var cTask = GetCountAsync(sqlQuery);
-                await Task.WhenAll(dataTask, cTask);
-                count = cTask.Result;
-            }
-
-            var result = dataTask.Result;
-            return new PagedResult<T>()
-            {
-                Data = result.Data,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                HasNextPage = !string.IsNullOrWhiteSpace(result.Token),
-                TotalCount = count
-            };
-        }
-
-        protected async Task<int> GetCountAsync(string sqlQuery)
-        {
-            var indx = sqlQuery.IndexOf("from", StringComparison.OrdinalIgnoreCase);
-            var query = "SELECT VALUE Count(1) " + sqlQuery.Substring(indx);
-            using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, query,
-                    new FeedOptions()
-                    {
-                        MaxItemCount = 1,
-                        RequestContinuation = null
-                    })
-                .AsDocumentQuery())
-            {
-                if (queryable.HasMoreResults)
-                {
-                    var data = await queryable.ExecuteNextAsync<int>();
-                    return data.First();
-                }
-            }
-
-            return 0;
-        }
     }
 }
