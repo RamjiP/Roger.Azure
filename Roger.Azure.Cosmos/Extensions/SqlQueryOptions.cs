@@ -18,6 +18,10 @@ namespace Roger.Azure.Cosmos.Extensions
             {
                 options.PartitionKey = new PartitionKey(sqlQueryOptions.PartitionKey);
             }
+            else
+            {
+                options.EnableCrossPartitionQuery = true;
+            }
 
             return options;
         }

@@ -35,7 +35,7 @@ namespace Roger.Azure.Cosmos
             {
                 Id = _collectionName,
                 DefaultTimeToLive = attr?.DefaultTimeToLive,
-                
+
             };
 
             if (!string.IsNullOrWhiteSpace(attr?.PartitionKeyPath))
@@ -45,7 +45,9 @@ namespace Roger.Azure.Cosmos
                     Paths = new Collection<string>() { attr.PartitionKeyPath }
                 };
             }
-            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection).Result;
+
+            var options = new RequestOptions { OfferThroughput = 400 };
+            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection, options).Result;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(Context.DatabaseName, _collectionName);
             DocumentCollection = resDc.Resource;
         }
@@ -132,6 +134,10 @@ namespace Roger.Azure.Cosmos
             if (!string.IsNullOrWhiteSpace(partitionKey))
             {
                 options.PartitionKey = new PartitionKey(partitionKey);
+            }
+            else
+            {
+                options.EnableCrossPartitionQuery = true;
             }
             using (var queryable = Context.Client.CreateDocumentQuery<T>(DocumentCollection.SelfLink, query, options)
                 .AsDocumentQuery())

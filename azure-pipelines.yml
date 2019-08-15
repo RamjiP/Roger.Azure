@@ -33,7 +33,7 @@ jobs:
       displayName: Package
       inputs:
         command: pack
-        buildProperties: 'PackageVersion=1.0.9'
+        buildProperties: 'PackageVersion=1.0.10'
 
     - task: DotNetCoreCLI@2
       displayName: 'dotnet push'
