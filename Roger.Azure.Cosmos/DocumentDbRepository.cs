@@ -74,8 +74,22 @@ namespace Roger.Azure.Cosmos
         {
             try
             {
-                var response = await Context.Client.ReadDocumentAsync(GetDocumentUri(id));
-                return (response.Resource.ToString().Deserialize<T>());
+                var result = await GetPagedResultAsync($"SELECT TOP 1 * from c where c.id = '{id}'", new SqlQueryOptions()
+                {
+                    PageNumber = 1,
+                    PageSize = 1
+                });
+                if (result.Data?.Count > 0)
+                {
+                    return result.Data.First();
+                }
+
+                if (throwException)
+                {
+                    throw new Exception($"Docment {id} not found");
+                }
+
+                return default(T);
             }
             catch (DocumentClientException e)
             {
