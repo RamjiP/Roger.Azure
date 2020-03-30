@@ -74,7 +74,7 @@ namespace Roger.Azure.Cosmos
         {
             try
             {
-                var result = await GetPagedResultAsync($"SELECT TOP 1 * from c where c.id = '{id}'", new SqlQueryOptions()
+                var result = await GetPagedResultAsync($"SELECT * from c where c.id = '{id}'", new SqlQueryOptions()
                 {
                     PageNumber = 1,
                     PageSize = 1
