@@ -22,7 +22,7 @@ namespace Roger.Azure.Cosmos
             _configuration = options.Value;
             _logger.LogInformation($"Creating database {_configuration.DatabaseName} if not exists in {_configuration.EndpointUrl}");
             Client = new DocumentClient(_configuration.EndpointUri, _configuration.PrimaryKey, SerializerSettings.Default);
-            var resDb = Client.CreateDatabaseIfNotExistsAsync(new Database() { Id = _configuration.DatabaseName }).Result;
+            var resDb = Client.CreateDatabaseIfNotExistsAsync(new Database() { Id = _configuration.DatabaseName }, new RequestOptions() {JsonSerializerSettings = SerializerSettings.Default, OfferThroughput = 400 }).Result;
             Db = resDb.Resource;
             DatabaseName = _configuration.DatabaseName;
             DatabaseUri = UriFactory.CreateDatabaseUri(_configuration.DatabaseName);

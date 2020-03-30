@@ -42,12 +42,12 @@ namespace Roger.Azure.Cosmos
             {
                 collection.PartitionKey = new PartitionKeyDefinition()
                 {
-                    Paths = new Collection<string>() { attr.PartitionKeyPath }
+                    Paths = new Collection<string>() { attr.PartitionKeyPath },
+                    Version = PartitionKeyDefinitionVersion.V2
                 };
             }
 
-            var options = new RequestOptions { OfferThroughput = 400 };
-            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection, options).Result;
+            var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection).Result;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(Context.DatabaseName, _collectionName);
             DocumentCollection = resDc.Resource;
         }
