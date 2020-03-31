@@ -110,7 +110,7 @@ namespace Roger.Azure.Cosmos
 
         public Task DeleteAsync(string id)
         {
-            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id));
+            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id), new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) });
         }
 
         public async Task<IPagedResult<T>> GetPagedResultAsync(string sql, SqlQueryOptions sqlQueryOptions)
@@ -133,6 +133,11 @@ namespace Roger.Azure.Cosmos
                 HasNextPage = !string.IsNullOrWhiteSpace(result.Token),
                 TotalCount = count
             };
+        }
+
+        protected Task DeleteWithPartitionKeyAsync(string id, object partitionKey)
+        {
+            return Context.Client.DeleteDocumentAsync(GetDocumentUri(id), new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
         }
 
         protected async Task<int> GetCountAsync(string sqlQuery, string partitionKey = null)
