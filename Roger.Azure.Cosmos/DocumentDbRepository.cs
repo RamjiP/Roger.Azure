@@ -23,6 +23,7 @@ namespace Roger.Azure.Cosmos
         protected readonly IDocumentDbContext Context;
         protected readonly ILogger Logger;
         protected readonly DocumentCollection DocumentCollection;
+        protected readonly bool IsPartitioned;
 
         public DocumentDbRepository(IDocumentDbContext context, ILogger logger)
         {
@@ -35,17 +36,14 @@ namespace Roger.Azure.Cosmos
             {
                 Id = _collectionName,
                 DefaultTimeToLive = attr?.DefaultTimeToLive,
-
+                PartitionKey = new PartitionKeyDefinition()
+                {
+                    Paths = new Collection<string>() { attr?.PartitionKeyPath ?? "/_partitionKey" },
+                    Version = PartitionKeyDefinitionVersion.V2
+                }
             };
 
-            if (!string.IsNullOrWhiteSpace(attr?.PartitionKeyPath))
-            {
-                collection.PartitionKey = new PartitionKeyDefinition()
-                {
-                    Paths = new Collection<string>() { attr.PartitionKeyPath },
-                    Version = PartitionKeyDefinitionVersion.V2
-                };
-            }
+            IsPartitioned = string.IsNullOrEmpty(attr?.PartitionKeyPath);
 
             var resDc = Context.Client.CreateDocumentCollectionIfNotExistsAsync(context.DatabaseUri, collection).Result;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(Context.DatabaseName, _collectionName);
